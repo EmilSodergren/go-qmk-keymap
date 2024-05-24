@@ -309,15 +309,17 @@ func print_svg(keyboard *keyboard_t, layers map[string]*layer_t) {
 	svgLines := svg.Print(svgLayers)
 
 	// write all lines to a text file
-	f, err := os.Create(*keyboard.Svg)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer f.Close()
-	for _, line := range svgLines {
-		f.WriteString(line)
-		f.WriteString("\n")
+	if len(strings.TrimSpace(*keyboard.Svg)) > 0 {
+		f, err := os.Create(*keyboard.Svg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+		defer f.Close()
+		for _, line := range svgLines {
+			f.WriteString(line)
+			f.WriteString("\n")
+		}
 	}
 }
 
