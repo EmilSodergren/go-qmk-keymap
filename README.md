@@ -11,14 +11,12 @@ Furthermore the export of an `svg` file is now disabled by default, you can enab
 NOTE: The state of this utility is still 'Alpha', things might change and bugs might exist.
 
 ## configuration
-
- Here an example of the configuration that you can add at the bottom of your `keymap.c` file.
+ The first line of the keymap.c should be a path to the config file given as a C-style comment.
+ Here is an example of the configuration that you can add in your `qmk-keymap-format.json` file. By providing a path to the `go-qmk-keymap` program with the `-workdir` flag config files may be specified with a path relative to the keymap.c.
 
  The 'spacing' array is used by the negative indices in the 'rows' definition, you can add/remove items to fit your needs.
 
 ```json
-/*
-qmk-keyboard-format:json:begin
 {
     "name": "Kyria",
     "numkeys": 50,
@@ -130,8 +128,6 @@ qmk-keyboard-format:json:begin
         "KC_RGUI": " ⌘  "
     }
 }
-qmk-keyboard-format:json:end
-*/
 ```
 
 ## Commandline
@@ -145,6 +141,45 @@ You can also run the program without compile step with this command:
 ## Visual Studio Code (vscode)
 
 You can use this formatter by installing an extension called [Custom Local Formatters](https://marketplace.visualstudio.com/items?itemName=jkillian.custom-local-formatters) and by adding a formatter entry for ```.c``` files and pointing to this utility. For Mac this utility needs to be in a directory that is known by your environment, for Windows the root of the workspace will work.
+
+## Neovim
+An autocommand like this will read, format and write back the content to the current buffer
+```lua
+vim.api.nvim_create_autocmd("BufWritePre",
+  {
+    pattern = "*",
+    group = 'format_on_save',
+    callback = function()
+      if filename == "keymap.c" then
+        if vim.fn.executable('go-qmk-keymap') ~= 1 then
+          return
+        end
+        local buf = vim.api.nvim_get_current_buf()
+        -- Write formatting to temp file
+        -- Provide path to current buffer to resolve config path relative to the keymap.c file
+        local handle = io.popen(string.format("go-qmk-keymap -workdir %s > keymap.c.tmp", vim.api.nvim_buf_get_name(0)), "w")
+        local content = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+        handle:write(table.concat(content, "\n"))
+        handle:close()
+        -- Read back the formatted value to the buffer
+        local handle = io.open("keymap.c.tmp", "r")
+        local form_content = handle:read("*a")
+        handle:close()
+        local t = {}
+        for line in string.gmatch(form_content, "(.-)%c") do
+          table.insert(t, line)
+        end
+        vim.api.nvim_buf_set_text(buf, 0, 0, -1, -1, t)
+        os.remove("keymap.c.tmp")
+      else
+        -- Use normal LSP fomatting for other files
+        vim.lsp.buf.format({ async = false, timeout = 2000 })
+      end
+    end
+  }
+)
+
+```
 
 ## keymap viz, aka ascii-art
 
