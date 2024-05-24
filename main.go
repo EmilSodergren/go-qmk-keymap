@@ -3,9 +3,12 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -318,8 +321,23 @@ func print_svg(keyboard *keyboard_t, layers map[string]*layer_t) {
 	}
 }
 
+type Args struct {
+	WorkingDir string
+}
+
+var configPath = regexp.MustCompile(`^/[/\*]\s*(\S+.json)`)
+
+func parseArgs() Args {
+	var args Args
+	fs := flag.NewFlagSet("go-qmk-keymap", flag.ExitOnError)
+	fs.StringVar(&args.WorkingDir, "workdir", "", "If provided, paths to the qmk-keyboard-format.json can be relative this path")
+	fs.Parse(os.Args[1:])
+	return args
+}
+
 func main() {
-	err := mainReturnWithCode()
+	args := parseArgs()
+	err := mainReturnWithCode(args)
 	if err == nil {
 		os.Exit(0)
 	}
@@ -338,36 +356,31 @@ func findEmit(line string, kb *keyboard_t) int {
 	return -1
 }
 
-func mainReturnWithCode() error {
+func mainReturnWithCode(args Args) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	lines := make([]string, 0, 4096)
-	for scanner.Scan() {
-		line := scanner.Text()
-		lines = append(lines, line)
-	}
 
-	// find the config json lines
-	collect_json := false
-	json := ""
-	for _, line := range lines {
-		if strings.Contains(line, "qmk-keyboard-format:json:begin") {
-			collect_json = true
-		} else if strings.Contains(line, "qmk-keyboard-format:json:end") {
-			collect_json = false
-		} else {
-			if collect_json {
-				json = json + line
+	scanner.Scan()
+	var kb *keyboard_t
+	firstLine := scanner.Text()
+	lines = append(lines, firstLine)
+	keymapPath := configPath.FindStringSubmatch(firstLine)
+	if len(keymapPath) > 0 {
+		kbdata, err := os.ReadFile(keymapPath[1])
+		if err != nil {
+			kbdata, err = os.ReadFile(filepath.Join(args.WorkingDir, keymapPath[1]))
+			if err != nil {
+				return fmt.Errorf("no configuration available")
 			}
 		}
-	}
-
-	if json == "" {
+		kb, err = UnmarshalKeyboard(kbdata)
+	} else {
 		return fmt.Errorf("no configuration available")
 	}
 
-	kb, err := UnmarshalKeyboard([]byte(json))
-	if kb == nil || err != nil {
-		return err
+	for scanner.Scan() {
+		line := scanner.Text()
+		lines = append(lines, line)
 	}
 
 	keymaps_begin := "keymaps[]"
