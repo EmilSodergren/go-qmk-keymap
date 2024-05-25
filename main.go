@@ -22,6 +22,33 @@ const (
 	STATE_TAIL
 )
 
+type vizemit_t struct {
+	Line  string `json:"line"`
+	Layer string `json:"layer"`
+}
+
+type keyboard_t struct {
+	Name           string            `json:"name"`
+	Numkeys        int               `json:"numkeys"`
+	Svg            *string           `json:"svg"`
+	Rows           [][]int           `json:"rows"`
+	Spacing        []int             `json:"spacing"`
+	VizWidth       int               `json:"vizcellwidth"`
+	VizEmits       []vizemit_t       `json:"vizemits"`
+	VizLine        string            `json:"vizline"`
+	VizBoard       []string          `json:"vizboard"`
+	VizSymbols     map[string]string `json:"vizsymbols"`
+	SvgLayers      []string          `json:"svglayers"`
+	SvgMapping     [][]int           `json:"svgmapping"`
+	SvgSymbolColor map[string]string `json:"svgcolors"`
+}
+
+type layer_t struct {
+	Name   string
+	Keymap []string
+	EOLs   []string
+}
+
 func is_comment_line(line string) bool {
 	line = strings.TrimSpace(line)
 	return strings.HasPrefix(line, "//") || strings.HasPrefix(line, "*") || strings.HasPrefix(line, "/*") || strings.HasPrefix(line, "*/")
@@ -355,26 +382,38 @@ func findEmit(line string, kb *keyboard_t) int {
 	return -1
 }
 
+func getConfigData(firstLine string, args Args) (*keyboard_t, error) {
+	keymapPath := configPath.FindStringSubmatch(firstLine)
+	if len(keymapPath) == 0 {
+		return nil, fmt.Errorf("no configuration found on first line of keymap.c")
+	}
+
+	// Checks if config path is absolute
+	kbdata, err := os.ReadFile(keymapPath[1])
+	if err != nil {
+		// Checks if config path relative workdir
+		kbdata, err = os.ReadFile(filepath.Join(args.WorkingDir, keymapPath[1]))
+		if err != nil {
+			return nil, fmt.Errorf("no configuration available: %v", err)
+		}
+	}
+	kb, err := UnmarshalKeyboard(kbdata)
+	if err != nil {
+		return nil, fmt.Errorf("configuration file not parseable: %v", err)
+	}
+	return kb, nil
+}
+
 func mainReturnWithCode(args Args) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	lines := make([]string, 0, 4096)
 
 	scanner.Scan()
-	var kb *keyboard_t
 	firstLine := scanner.Text()
 	lines = append(lines, firstLine)
-	keymapPath := configPath.FindStringSubmatch(firstLine)
-	if len(keymapPath) > 0 {
-		kbdata, err := os.ReadFile(keymapPath[1])
-		if err != nil {
-			kbdata, err = os.ReadFile(filepath.Join(args.WorkingDir, keymapPath[1]))
-			if err != nil {
-				return fmt.Errorf("no configuration available")
-			}
-		}
-		kb, err = UnmarshalKeyboard(kbdata)
-	} else {
-		return fmt.Errorf("no configuration available")
+	var kb, err = getConfigData(firstLine, args)
+	if err != nil {
+		return err
 	}
 
 	for scanner.Scan() {
@@ -483,33 +522,6 @@ func UnmarshalKeyboard(data []byte) (*keyboard_t, error) {
 
 func (r *keyboard_t) Marshal() ([]byte, error) {
 	return json.Marshal(r)
-}
-
-type vizemit_t struct {
-	Line  string `json:"line"`
-	Layer string `json:"layer"`
-}
-
-type keyboard_t struct {
-	Name           string            `json:"name"`
-	Numkeys        int               `json:"numkeys"`
-	Svg            *string           `json:"svg"`
-	Rows           [][]int           `json:"rows"`
-	Spacing        []int             `json:"spacing"`
-	VizWidth       int               `json:"vizcellwidth"`
-	VizEmits       []vizemit_t       `json:"vizemits"`
-	VizLine        string            `json:"vizline"`
-	VizBoard       []string          `json:"vizboard"`
-	VizSymbols     map[string]string `json:"vizsymbols"`
-	SvgLayers      []string          `json:"svglayers"`
-	SvgMapping     [][]int           `json:"svgmapping"`
-	SvgSymbolColor map[string]string `json:"svgcolors"`
-}
-
-type layer_t struct {
-	Name   string
-	Keymap []string
-	EOLs   []string
 }
 
 // key symbols
