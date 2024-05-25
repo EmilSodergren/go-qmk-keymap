@@ -340,12 +340,9 @@ func parseArgs() Args {
 func main() {
 	args := parseArgs()
 	err := mainReturnWithCode(args)
-	if err == nil {
-		os.Exit(0)
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	log.Fatal(err)
-	os.Exit(-1)
 }
 
 func findEmit(line string, kb *keyboard_t) int {
