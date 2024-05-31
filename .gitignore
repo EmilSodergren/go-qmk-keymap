@@ -7,4 +7,4 @@ tags
 .vscode/
 .build/
 output/
-
+*.svg
