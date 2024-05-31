@@ -8,3 +8,4 @@ tags
 .build/
 output/
 *.svg
+.ccls-cache/

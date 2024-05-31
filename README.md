@@ -150,14 +150,17 @@ vim.api.nvim_create_autocmd("BufWritePre",
     pattern = "*",
     group = 'format_on_save',
     callback = function()
-      if filename == "keymap.c" then
+      local filename = vim.api.nvim_buf_get_name(0):match("^.+/(.+)$")
+      if vim.bo.filetype == "go" then
+        require('go.format').goimport()
+      elseif filename == "keymap.c" then
         if vim.fn.executable('go-qmk-keymap') ~= 1 then
           return
         end
         local buf = vim.api.nvim_get_current_buf()
+        local workdir = vim.api.nvim_buf_get_name(0):match("(.*[/\\])")
         -- Write formatting to temp file
-        -- Provide path to current buffer to resolve config path relative to the keymap.c file
-        local handle = io.popen(string.format("go-qmk-keymap -workdir %s > keymap.c.tmp", vim.api.nvim_buf_get_name(0)), "w")
+        local handle = io.popen(string.format("go-qmk-keymap -workdir %s > keymap.c.tmp", workdir), "w")
         local content = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
         handle:write(table.concat(content, "\n"))
         handle:close()
@@ -172,7 +175,6 @@ vim.api.nvim_create_autocmd("BufWritePre",
         vim.api.nvim_buf_set_text(buf, 0, 0, -1, -1, t)
         os.remove("keymap.c.tmp")
       else
-        -- Use normal LSP fomatting for other files
         vim.lsp.buf.format({ async = false, timeout = 2000 })
       end
     end

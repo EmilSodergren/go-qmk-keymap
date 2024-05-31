@@ -11,7 +11,7 @@ ${OUTDIR}go-qmk-keymap: main.go go.mod Makefile
 
 ifneq ($(shell command -v watchexec),)
 test:
-	watchexec -e go -c -r -w ${CURDIR} "make --no-print-directory all && cat ${EX_DIR}/keymap.c | go-qmk-keymap -workdir ${EX_DIR}"
+	watchexec -e go -c -r --debounce 2000 -w ${CURDIR} "make --no-print-directory all && cat ${EX_DIR}/keymap.c | go-qmk-keymap -workdir ${EX_DIR}"
 else
 test: all
 	cat ${EX_DIR}/keymap.c | go-qmk-keymap -workdir ${EX_DIR}
