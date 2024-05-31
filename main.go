@@ -298,7 +298,7 @@ func escape_svg(s string) string {
 	return string(output)
 }
 
-func print_svg(keyboard *keyboard_t, layers map[string]*layer_t) {
+func print_svg(keyboard *keyboard_t, layers map[string]*layer_t, workdir string) {
 
 	svgLayers := make([]svg.Layer_t, 0, 32)
 	for _, layername := range keyboard.SvgLayers {
@@ -337,7 +337,7 @@ func print_svg(keyboard *keyboard_t, layers map[string]*layer_t) {
 
 	// write all lines to a text file
 	if len(strings.TrimSpace(*keyboard.Svg)) > 0 {
-		f, err := os.Create(*keyboard.Svg)
+		f, err := os.Create(filepath.Join(workdir, *keyboard.Svg))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return
@@ -508,7 +508,7 @@ func mainReturnWithCode(args Args) error {
 	}
 
 	if kb.Svg != nil {
-		print_svg(kb, layers)
+		print_svg(kb, layers, args.WorkingDir)
 	}
 
 	return nil
