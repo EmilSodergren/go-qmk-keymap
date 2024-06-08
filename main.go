@@ -43,10 +43,6 @@ type keyboard_t struct {
 	SvgSymbolColor map[string]string `json:"svgcolors"`
 }
 
-type Layout struct {
-	Name string
-	Keys [][]string
-}
 type layer_t struct {
 	Name   string
 	Keymap []string
@@ -408,47 +404,6 @@ func getConfigData(firstLine string, args Args) (*keyboard_t, error) {
 	return kb, nil
 }
 
-func LayerFrom(s string, kbConfig *keyboard_t) (Layout, error) {
-	layout_re := regexp.MustCompile(`\[(.*)\]=LAYOUT\((.*)\)`)
-
-	matches := layout_re.FindStringSubmatch(s)
-	if len(matches) != 3 {
-		return Layout{}, fmt.Errorf("NO")
-	}
-	name := matches[1]
-	layoutKeys := strings.Split(matches[2], ",")
-	if len(layoutKeys) != kbConfig.Numkeys {
-		return Layout{}, fmt.Errorf("Layer %s contains %d keys but %d was expected", name, len(layoutKeys), kbConfig.Numkeys)
-	}
-	return Layout{Name: name}, nil
-}
-
-func getKeymapsFromLines(lines []string, kbConfig *keyboard_t) ([]Layout, error) {
-	var layers []string
-	paren_count := 0
-	current_layer := ""
-
-	for _, line := range lines {
-		if strings.Contains(line, keymap_begin) || len(current_layer) > 0 {
-			paren_count += strings.Count(line, "(") - strings.Count(line, ")")
-			current_layer += strings.ReplaceAll(strings.TrimSpace(line), " ", "")
-		}
-		if paren_count < 1 && len(current_layer) > 0 {
-			_, err := LayerFrom(current_layer, kbConfig)
-			if err != nil {
-				return nil, err
-			}
-
-			layers = append(layers, current_layer)
-			current_layer = ""
-		}
-	}
-	// fmt.Println(layers)
-	return []Layout{}, nil
-}
-
-var keymap_begin = "= LAYOUT"
-
 func mainReturnWithCode(args Args) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	lines := make([]string, 0, 4096)
@@ -465,15 +420,13 @@ func mainReturnWithCode(args Args) error {
 		line := scanner.Text()
 		lines = append(lines, line)
 	}
-	_, err = getKeymapsFromLines(lines, kb)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
+	_ = GetKeymapsFromLines(lines, kb)
 
 	var keymaps_begin = "const uint16_t PROGMEM "
 	var keymaps_end = "};"
 	var keymap_end1 = "),"
 	var keymap_end2 = ")"
+	var keymap_begin = "= LAYOUT"
 
 	output := make([]string, 0, 1024)
 	layers := make(map[string]*layer_t)
