@@ -420,7 +420,10 @@ func mainReturnWithCode(args Args) error {
 		line := scanner.Text()
 		lines = append(lines, line)
 	}
-	_ = GetKeymapsFromLines(lines, kb)
+	ls := GetKeymapsFromLines(lines, kb)
+	for _, l := range ls {
+		fmt.Fprintln(os.Stderr, l.Format())
+	}
 
 	var keymaps_begin = "const uint16_t PROGMEM "
 	var keymaps_end = "};"
