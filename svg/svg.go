@@ -131,15 +131,16 @@ func Print(layers []Layer_t) []string {
 	s.print_layers(layers)
 
 	s.lines = append(s.lines, "</svg>")
+
 	return s.lines
 }
 
 func (s *instance) print_key(x int, y int, key Key_t) {
-
 	line := fmt.Sprintf("<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" rx=\"%d\" ry=\"%d\" class=\"%s\" />", x+s.InnerPadW, y+s.InnerPadH, s.KeyW, s.KeyH, s.KeyRx, s.KeyRy, key.Class)
 	s.lines = append(s.lines, line)
 
 	words := strings.Split(key.Key, " ")
+
 	y += (s.KeyspaceH - (len(words)-1)*s.LineSpacing) / 2
 	for _, word := range words {
 		line = fmt.Sprintf("<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" class=\"key-text\">%s</text>", x+s.KeyspaceW/2, y, word)
@@ -163,7 +164,6 @@ func (s *instance) print_layers(layers []Layer_t) {
 	y := s.LineSpacing + s.OuterPadH
 
 	for _, layer := range layers {
-
 		line := fmt.Sprintf("<text x=\"%d\" y=\"%d\" text-anchor=\"left\" class=\"layertitle\">%s</text>", x, y-s.LineSpacing, layer.Name)
 		s.lines = append(s.lines, line)
 

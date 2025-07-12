@@ -51,41 +51,47 @@ type layer_t struct {
 
 func is_comment_line(line string) bool {
 	line = strings.TrimSpace(line)
-	return strings.HasPrefix(line, "//") || strings.HasPrefix(line, "*") || strings.HasPrefix(line, "/*") || strings.HasPrefix(line, "*/")
+	return strings.HasPrefix(line, "//") || strings.HasPrefix(line, "*") ||
+		strings.HasPrefix(line, "/*") || strings.HasPrefix(line, "*/")
 }
 
 func sprint_element(element string, separator string, width int) string {
 	// left align the element
 	// followed by the seperator
 	// padded with space until reaching width
-
 	str := make([]rune, 0, width+1)
 	cnt := 0
+
 	for _, c := range element {
 		str = append(str, c)
 		cnt += 1
 	}
+
 	for _, c := range separator {
 		str = append(str, c)
 		cnt += 1
 	}
+
 	for cnt < width {
 		str = append(str, ' ')
 		cnt += 1
 	}
+
 	return string(str)
 }
 
 func print_formatted(kb *keyboard_t, layer *layer_t) []string {
 	output := make([]string, 0, 8)
+
 	width := make([]int, len(kb.Rows[0]))
-	for i := 0; i < len(width); i++ {
+	for i := range width {
 		if len(kb.Spacing) > 0 {
 			width[i] = kb.Spacing[0]
 		} else {
 			width[i] = 8
 		}
 	}
+
 	for _, row := range kb.Rows {
 		for ci, ki := range row {
 			if ki >= 0 {
@@ -106,24 +112,29 @@ func print_formatted(kb *keyboard_t, layer *layer_t) []string {
 
 	for ri, row := range kb.Rows {
 		line := ""
+
 		for i, ki := range row {
 			last_column := ki == (kb.Numkeys - 1)
 			if ki < 0 {
 				line = line + sprint_element("", " ", width[i]+2)
+				continue
+			}
+
+			if last_column {
+				line = line + sprint_element(layer.Keymap[ki], " ", width[i]+2)
 			} else {
-				if last_column {
-					line = line + sprint_element(layer.Keymap[ki], " ", width[i]+2)
-				} else {
-					line = line + sprint_element(layer.Keymap[ki], ",", width[i]+2)
-				}
+				line = line + sprint_element(layer.Keymap[ki], ",", width[i]+2)
 			}
 		}
 
-		// add eol part
-		line = line + layer.EOLs[ri]
+		// add eol part if present
+		if len(layer.EOLs) > ri {
+			line = line + layer.EOLs[ri]
+		}
 
 		output = append(output, line)
 	}
+
 	return output
 }
 
@@ -132,9 +143,11 @@ const (
 	PARSER_ARRAYITEM
 )
 
+// TODO: Create a Regexp for this
 func parse_layer_id(line string) string {
 	// [ID] = LAYOUT(
 	id := make([]rune, 0, 16)
+
 	state := 0
 	for _, r := range line {
 		if state == 0 {
@@ -151,8 +164,10 @@ func parse_layer_id(line string) string {
 			break
 		}
 	}
+
 	idstr := string(id)
 	idstr = strings.TrimSpace(idstr)
+
 	return idstr
 }
 
@@ -176,8 +191,8 @@ func parse_elements(line string) ([]string, string) {
 	state := PARSER_WHITESPACE
 	open := 0
 	elem := make([]rune, 0, 60)
-	for _, r := range line {
 
+	for _, r := range line {
 		if state == PARSER_WHITESPACE {
 			if !unicode.IsSpace(r) {
 				state = PARSER_ARRAYITEM
@@ -191,6 +206,7 @@ func parse_elements(line string) ([]string, string) {
 				} else if r == ']' || r == ')' {
 					open -= 1
 				}
+
 				elem = append(elem, r)
 			} else {
 				if r == ',' {
@@ -203,24 +219,29 @@ func parse_elements(line string) ([]string, string) {
 					if r == '[' || r == '(' {
 						open += 1
 					}
+
 					elem = append(elem, r)
 				}
 			}
 		}
 	}
+
 	if len(elem) > 0 {
 		elemstr := string(elem)
+
 		elemstr = strings.TrimSpace(elemstr)
 		if len(elemstr) > 0 {
 			keymap = append(keymap, elemstr)
 		}
 	}
+
 	return keymap, end_of_line_part
 }
 
 func parse_viz_layer_names(line string) []string {
 	layer_names := make([]string, 0, 4)
 	layers_str := make([]rune, 0, 32)
+
 	state := 0
 	for _, c := range line {
 		if state == 0 {
@@ -237,11 +258,13 @@ func parse_viz_layer_names(line string) []string {
 			break
 		}
 	}
+
 	layers := strings.Split(string(layers_str), ",")
 	for _, l := range layers {
 		layer_name := strings.TrimSpace(l)
 		layer_names = append(layer_names, layer_name)
 	}
+
 	return layer_names
 }
 
@@ -254,6 +277,7 @@ func print_viz(k *keyboard_t, layer *layer_t) []string {
 	keyboardviz = append(keyboardviz, k.VizBoard...)
 
 	spacing := "                          "
+
 	for ki, key := range layer.Keymap {
 		keysymbol := ""
 		if symbol, ok := k.VizSymbols[key]; ok {
@@ -295,12 +319,13 @@ func escape_svg(s string) string {
 			output = append(output, r)
 		}
 	}
+
 	return string(output)
 }
 
 func print_svg(keyboard *keyboard_t, layers map[string]*layer_t, workdir string) {
-
 	svgLayers := make([]svg.Layer_t, 0, 32)
+
 	for _, layername := range keyboard.SvgLayers {
 		layer, has_layer := layers[layername]
 		if has_layer {
@@ -312,6 +337,7 @@ func print_svg(keyboard *keyboard_t, layers map[string]*layer_t, workdir string)
 				svgRow := make([]svg.Key_t, 0, 20)
 				for _, key := range row {
 					svgKey := svg.Key_t{}
+
 					svgKey.Exists = key >= 0
 					if key >= 0 {
 						svgKey.Key = layer.Keymap[key]
@@ -319,16 +345,20 @@ func print_svg(keyboard *keyboard_t, layers map[string]*layer_t, workdir string)
 						svgKey.Key = strings.TrimSpace(svgKey.Key)
 						svgKey.Key = escape_svg(svgKey.Key)
 					}
+
 					svgKeyClass, hasClass := keyboard.SvgSymbolColor[svgKey.Key]
 					if hasClass {
 						svgKey.Class = svgKeyClass
 					} else {
 						svgKey.Class = ""
 					}
+
 					svgRow = append(svgRow, svgKey)
 				}
+
 				svgLayer.Matrix = append(svgLayer.Matrix, svgRow)
 			}
+
 			svgLayers = append(svgLayers, svgLayer)
 		}
 	}
@@ -343,6 +373,7 @@ func print_svg(keyboard *keyboard_t, layers map[string]*layer_t, workdir string)
 			return
 		}
 		defer f.Close()
+
 		for _, line := range svgLines {
 			f.WriteString(line)
 			f.WriteString("\n")
@@ -358,15 +389,18 @@ var configPath = regexp.MustCompile(`^/[/\*]\s*(\S+.json)`)
 
 func parseArgs() Args {
 	var args Args
+
 	fs := flag.NewFlagSet("go-qmk-keymap", flag.ExitOnError)
 	fs.StringVar(&args.WorkingDir, "workdir", "", "If provided, paths to the qmk-keyboard-format.json can be relative this path")
 	fs.Parse(os.Args[1:])
+
 	return args
 }
 
 func main() {
 	args := parseArgs()
-	err := mainReturnWithCode(args)
+
+	err := run(args)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -379,6 +413,7 @@ func findEmit(line string, kb *keyboard_t) int {
 			return emitidx
 		}
 	}
+
 	return -1
 }
 
@@ -397,20 +432,23 @@ func getConfigData(firstLine string, args Args) (*keyboard_t, error) {
 			return nil, fmt.Errorf("no configuration available: %v", err)
 		}
 	}
+
 	kb, err := UnmarshalKeyboard(kbdata)
 	if err != nil {
 		return nil, fmt.Errorf("configuration file not parseable: %v", err)
 	}
+
 	return kb, nil
 }
 
-func mainReturnWithCode(args Args) error {
+func run(args Args) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	lines := make([]string, 0, 4096)
 
 	scanner.Scan()
 	firstLine := scanner.Text()
 	lines = append(lines, firstLine)
+
 	var kb, err = getConfigData(firstLine, args)
 	if err != nil {
 		return err
@@ -420,76 +458,75 @@ func mainReturnWithCode(args Args) error {
 		line := scanner.Text()
 		lines = append(lines, line)
 	}
-	ls := GetKeymapsFromLines(lines, kb)
-	for _, l := range ls {
-		fmt.Fprintln(os.Stderr, l.Format())
-	}
 
-	var keymaps_begin = "const uint16_t PROGMEM "
-	var keymaps_end = "};"
-	var keymap_end1 = "),"
-	var keymap_end2 = ")"
-	var keymap_begin = "= LAYOUT"
+	var (
+		keymaps_begin = "const uint16_t PROGMEM "
+		keymaps_end   = "};"
+		keymap_end1   = "),"
+		keymap_end2   = ")"
+		keymap_begin  = "= LAYOUT"
+	)
 
 	output := make([]string, 0, 1024)
 	layers := make(map[string]*layer_t)
 
 	state := STATE_HEAD
-	layer := &layer_t{}
+	var currentLayer *layer_t
+
 	for _, line := range lines {
 		// here we check if the line is a '//' comment and skip processing it
 		if is_comment_line(line) {
 			if !strings.HasPrefix(strings.TrimSpace(line), kb.VizLine) {
 				output = append(output, line)
 			}
-		} else {
-			if state == STATE_HEAD {
-				if strings.Contains(line, keymaps_begin) {
-					state = STATE_KEYMAPS
-					output = append(output, line)
-				} else {
-					output = append(output, line)
-				}
-			} else if state == STATE_KEYMAPS {
-				if strings.Contains(line, keymap_begin) {
-					layer_name := parse_layer_id(line)
-					layer = &layer_t{Name: layer_name, Keymap: make([]string, 0, 104)}
-					layers[layer_name] = layer
-					state = STATE_KEYMAP
-					output = append(output, line)
-				} else if strings.Compare(strings.TrimSpace(line), keymaps_end) == 0 {
-					state = STATE_TAIL
-					output = append(output, line)
-				} else {
-					output = append(output, line)
-				}
-			} else if state == STATE_KEYMAP {
-				if strings.TrimSpace(line) == keymap_end1 || strings.TrimSpace(line) == keymap_end2 {
-					// do we have a parsed keymap, if so write it out here in a formatted form
-					//if len(keymap) == keyboard.numkeys {
-					formatted := print_formatted(kb, layer)
-					output = append(output, formatted...)
-					//}
-					layer = nil
-					state = STATE_KEYMAPS
-					output = append(output, line)
-				} else {
-					// collect the elements from these lines
-					elems, eol_part := parse_elements(line)
-					layer.Keymap = append(layer.Keymap, elems...)
-					layer.EOLs = append(layer.EOLs, eol_part)
-				}
-			} else if state == STATE_TAIL {
-				output = append(output, line)
+			continue
+		}
+
+		switch state {
+		// Before the KeyMaps, append the lines
+		case STATE_HEAD:
+			if strings.Contains(line, keymaps_begin) {
+				state = STATE_KEYMAPS
 			}
+			output = append(output, line)
+		// Found where the KeyMaps definitions starts
+		case STATE_KEYMAPS:
+			if strings.Contains(line, keymap_begin) {
+				layer_name := parse_layer_id(line)
+				currentLayer = &layer_t{Name: layer_name, Keymap: make([]string, 0, kb.Numkeys), EOLs: make([]string, 0, len(kb.Rows))}
+				layers[layer_name] = currentLayer
+				state = STATE_KEYMAP
+			} else if strings.TrimSpace(line) == keymaps_end {
+				state = STATE_TAIL
+			}
+			output = append(output, line)
+		// Parsing a KeyMap definiton
+		case STATE_KEYMAP:
+			if strings.TrimSpace(line) == keymap_end1 || strings.TrimSpace(line) == keymap_end2 {
+				// do we have a parsed keymap, if so write it out here in a formatted form
+				formatted := print_formatted(kb, currentLayer)
+				output = append(output, formatted...)
+				currentLayer = nil
+				state = STATE_KEYMAPS
+
+				output = append(output, line)
+			} else {
+				// collect the elements from these lines
+				elems, eol_part := parse_elements(line)
+				currentLayer.Keymap = append(currentLayer.Keymap, elems...)
+				currentLayer.EOLs = append(currentLayer.EOLs, eol_part)
+			}
+		// Found where the KeyMaps definitins ends
+		case STATE_TAIL:
+			output = append(output, line)
 		}
 	}
 
 	if len(kb.VizEmits) > 0 {
 		// iterate over all output lines and identify locations where we need to output ascii-art for a layer
-
 		doviz := 0
 		output_temp := make([]string, 0, 1024)
+
 		for _, line := range output {
 			emitindex := findEmit(line, kb)
 			if emitindex >= 0 {
@@ -498,17 +535,19 @@ func mainReturnWithCode(args Args) error {
 					layer_viz := print_viz(kb, layer)
 					output_temp = append(output_temp, layer_viz...)
 				}
+
 				output_temp = append(output_temp, line)
 				doviz = 0
 			} else if doviz == 0 {
 				output_temp = append(output_temp, line)
 			}
 		}
+
 		output = output_temp
 	}
 
 	for _, l := range output {
-		fmt.Println(l)
+		fmt.Println(strings.TrimRight(l, " "))
 	}
 
 	if kb.Svg != nil {
@@ -521,6 +560,7 @@ func mainReturnWithCode(args Args) error {
 func UnmarshalKeyboard(data []byte) (*keyboard_t, error) {
 	r := &keyboard_t{}
 	err := json.Unmarshal(data, &r)
+
 	return r, err
 }
 
