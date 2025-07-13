@@ -8,7 +8,7 @@ import (
 )
 
 type KeyList struct {
-	Keys []Key
+	Keys map[RowCol]Key
 	Rows int
 	Cols int
 }
@@ -37,14 +37,24 @@ func (l *Layout) Format() string {
 		return l.OrigLines
 	}
 
+	formattedString := ""
+	// This formats correctly
+	// But it requires 2-space tab stop
 	colWidths := getColWidths(l.KeyCodes)
-	// NEJ! go through all positions in matrix instead
-	for _, key := range l.KeyCodes.Keys {
-		// key.
-		fmt.Fprintf(os.Stderr, " %-[2]*[1]s,", key.Code, colWidths[key.RowCol.Col])
+	for row := range l.KeyCodes.Rows {
+		for col := range l.KeyCodes.Cols {
+			keycode := l.KeyCodes.Keys[RowCol{row, col}].Code
+			formattedString += fmt.Sprintf(" %-[2]*[1]s", keycode, colWidths[col])
+			if len(keycode) == 0 {
+				formattedString += " "
+			} else {
+				formattedString += ","
+			}
+		}
+		formattedString += "\n"
 	}
 
-	return ""
+	return formattedString
 }
 
 func getColWidths(keys KeyList) []int {
@@ -58,20 +68,25 @@ func getColWidths(keys KeyList) []int {
 }
 
 func newKeyCodes(layoutKeys []string, keyIdxToRowCol map[int]RowCol) KeyList {
-	var keyList KeyList
+
+	var keyList = KeyList{
+		Keys: make(map[RowCol]Key),
+		Rows: 0,
+		Cols: 0,
+	}
 
 	for i, key := range layoutKeys {
 		rowcol := keyIdxToRowCol[i]
 		keyList.Rows = max(keyList.Rows, rowcol.Row+1)
 		keyList.Cols = max(keyList.Cols, rowcol.Col+1)
-		keyList.Keys = append(keyList.Keys, Key{Code: key, Index: i, RowCol: rowcol})
+		keyList.Keys[rowcol] = Key{Code: key, Index: i, RowCol: rowcol}
 	}
 
 	return keyList
 }
 
 // Match the formatted LAYOUT line, e.g [NAME] = LAYOUT (KC_1,KC_2,KC_3....)
-var layout_re = regexp.MustCompile(`\[(.*)\]\s*=\s*LAYOUT\s*\((.*)\)`)
+var layout_re = regexp.MustCompile(`\[([[:word:]]+)\]\s*=\s*LAYOUT\s*\((.*)\)`)
 
 func removeTabsNSpaces(s string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(strings.TrimSpace(s), "\t", ""), " ", "")
@@ -81,7 +96,9 @@ func removeTabsNSpaces(s string) string {
 func newLayout(origS string, keyIdxToRowCol map[int]RowCol, rowColToKeyIdx map[RowCol]int, numKeys int) *Layout {
 	var current_layer string
 	for _, line := range strings.Split(strings.ReplaceAll(origS, "\r\n", "\n"), "\n") {
-		current_layer += removeTabsNSpaces(line)
+		// TODO: We loose the line comment here!!!
+		lineWithComment := strings.SplitN(line, "//", 2)
+		current_layer += removeTabsNSpaces(lineWithComment[0])
 	}
 
 	matches := layout_re.FindStringSubmatch(current_layer)
@@ -151,7 +168,8 @@ func GetKeymapsFromLines(lines []string, kbConfig *keyboard_t) []*Layout {
 		}
 
 		if paren_count < 1 && len(orig_lines) > 0 {
-			layouts = append(layouts, newLayout(orig_lines, keyIdxToRowCol, rowColToKeyIdx, kbConfig.Numkeys))
+			layout := newLayout(orig_lines, keyIdxToRowCol, rowColToKeyIdx, kbConfig.Numkeys)
+			layouts = append(layouts, layout)
 			orig_lines = ""
 		}
 	}

@@ -441,6 +441,8 @@ func getConfigData(firstLine string, args Args) (*keyboard_t, error) {
 	return kb, nil
 }
 
+var test_re = regexp.MustCompile(`\s*\[(?<layer_id>[[:word:]]+)\] = LAYOUT\s*\(`)
+
 func run(args Args) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	lines := make([]string, 0, 4096)
@@ -473,9 +475,13 @@ func run(args Args) error {
 	state := STATE_HEAD
 	var currentLayer *layer_t
 
+	var keymapLines []string
+	var keymapLayers []*Layout
 	for _, line := range lines {
-		// here we check if the line is a '//' comment and skip processing it
+		// here we check if the line is a '//' comment
 		if is_comment_line(line) {
+			// If it is NOT a "special" VizLine comment, we keep it.
+			// The VizLines will be added later, so skip them to avoid duplicates
 			if !strings.HasPrefix(strings.TrimSpace(line), kb.VizLine) {
 				output = append(output, line)
 			}
@@ -493,17 +499,19 @@ func run(args Args) error {
 		case STATE_KEYMAPS:
 			if strings.Contains(line, keymap_begin) {
 				layer_name := parse_layer_id(line)
-				currentLayer = &layer_t{Name: layer_name, Keymap: make([]string, 0, kb.Numkeys), EOLs: make([]string, 0, len(kb.Rows))}
+				currentLayer = &layer_t{Name: layer_name, Keymap: make([]string, 0, kb.Numkeys), EOLs: make([]string, len(kb.Rows))}
 				layers[layer_name] = currentLayer
 				state = STATE_KEYMAP
-			} else if strings.TrimSpace(line) == keymaps_end {
+				keymapLines = append(keymapLines, line)
+			} else if strings.HasSuffix(strings.TrimSpace(line), keymaps_end) {
+				keymapLayers = GetKeymapsFromLines(keymapLines, kb)
 				state = STATE_TAIL
 			}
 			output = append(output, line)
 		// Parsing a KeyMap definiton
 		case STATE_KEYMAP:
 			if strings.TrimSpace(line) == keymap_end1 || strings.TrimSpace(line) == keymap_end2 {
-				// do we have a parsed keymap, if so write it out here in a formatted form
+				// do we have a parsed keymap, if so append the formatted lines to output
 				formatted := print_formatted(kb, currentLayer)
 				output = append(output, formatted...)
 				currentLayer = nil
@@ -516,6 +524,7 @@ func run(args Args) error {
 				currentLayer.Keymap = append(currentLayer.Keymap, elems...)
 				currentLayer.EOLs = append(currentLayer.EOLs, eol_part)
 			}
+			keymapLines = append(keymapLines, line)
 		// Found where the KeyMaps definitins ends
 		case STATE_TAIL:
 			output = append(output, line)
@@ -544,6 +553,10 @@ func run(args Args) error {
 		}
 
 		output = output_temp
+	}
+
+	for _, l := range keymapLayers {
+		l.Format() // <-- print this to use the new formatter
 	}
 
 	for _, l := range output {
