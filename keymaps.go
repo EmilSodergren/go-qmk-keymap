@@ -44,6 +44,7 @@ func (l *Layout) Format() string {
 	for row := range l.KeyCodes.Rows {
 		for col := range l.KeyCodes.Cols {
 			keycode := l.KeyCodes.Keys[RowCol{row, col}].Code
+
 			formattedString += fmt.Sprintf(" %-[2]*[1]s", keycode, colWidths[col])
 			if len(keycode) == 0 {
 				formattedString += " "
@@ -51,6 +52,7 @@ func (l *Layout) Format() string {
 				formattedString += ","
 			}
 		}
+
 		formattedString += "\n"
 	}
 
@@ -68,7 +70,6 @@ func getColWidths(keys KeyList) []int {
 }
 
 func newKeyCodes(layoutKeys []string, keyIdxToRowCol map[int]RowCol) KeyList {
-
 	var keyList = KeyList{
 		Keys: make(map[RowCol]Key),
 		Rows: 0,
@@ -95,6 +96,7 @@ func removeTabsNSpaces(s string) string {
 // newLayout create a new keymap layout from an input string. It handles windows file endings.
 func newLayout(origS string, keyIdxToRowCol map[int]RowCol, rowColToKeyIdx map[RowCol]int, numKeys int) *Layout {
 	var current_layer string
+
 	for _, line := range strings.Split(strings.ReplaceAll(origS, "\r\n", "\n"), "\n") {
 		// TODO: We loose the line comment here!!!
 		lineWithComment := strings.SplitN(line, "//", 2)

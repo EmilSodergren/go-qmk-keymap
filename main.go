@@ -51,6 +51,7 @@ type layer_t struct {
 
 func is_comment_line(line string) bool {
 	line = strings.TrimSpace(line)
+
 	return strings.HasPrefix(line, "//") || strings.HasPrefix(line, "*") ||
 		strings.HasPrefix(line, "/*") || strings.HasPrefix(line, "*/")
 }
@@ -473,10 +474,14 @@ func run(args Args) error {
 	layers := make(map[string]*layer_t)
 
 	state := STATE_HEAD
+
 	var currentLayer *layer_t
 
-	var keymapLines []string
-	var keymapLayers []*Layout
+	var (
+		keymapLines  []string
+		keymapLayers []*Layout
+	)
+
 	for _, line := range lines {
 		// here we check if the line is a '//' comment
 		if is_comment_line(line) {
@@ -485,6 +490,7 @@ func run(args Args) error {
 			if !strings.HasPrefix(strings.TrimSpace(line), kb.VizLine) {
 				output = append(output, line)
 			}
+
 			continue
 		}
 
@@ -494,6 +500,7 @@ func run(args Args) error {
 			if strings.Contains(line, keymaps_begin) {
 				state = STATE_KEYMAPS
 			}
+
 			output = append(output, line)
 		// Found where the KeyMaps definitions starts
 		case STATE_KEYMAPS:
@@ -502,11 +509,13 @@ func run(args Args) error {
 				currentLayer = &layer_t{Name: layer_name, Keymap: make([]string, 0, kb.Numkeys), EOLs: make([]string, len(kb.Rows))}
 				layers[layer_name] = currentLayer
 				state = STATE_KEYMAP
+
 				keymapLines = append(keymapLines, line)
 			} else if strings.HasSuffix(strings.TrimSpace(line), keymaps_end) {
 				keymapLayers = GetKeymapsFromLines(keymapLines, kb)
 				state = STATE_TAIL
 			}
+
 			output = append(output, line)
 		// Parsing a KeyMap definiton
 		case STATE_KEYMAP:
@@ -524,6 +533,7 @@ func run(args Args) error {
 				currentLayer.Keymap = append(currentLayer.Keymap, elems...)
 				currentLayer.EOLs = append(currentLayer.EOLs, eol_part)
 			}
+
 			keymapLines = append(keymapLines, line)
 		// Found where the KeyMaps definitins ends
 		case STATE_TAIL:
