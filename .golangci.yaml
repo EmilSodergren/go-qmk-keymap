@@ -1,0 +1,40 @@
+version: '2'
+issues:
+  max-same-issues: 10
+linters:
+  default: all
+  enable:
+    - wsl_v5
+  disable:
+    - depguard
+    - gomoddirectives
+    - gosec
+    - lll
+    - nlreturn
+    - nolintlint
+    - prealloc
+    - wsl
+  settings:
+    varnamelen:
+      ignore-decls:
+        - wg sync.WaitGroup
+        - wg *sync.WaitGroup
+        - h hash.Hash
+    perfsprint:
+      strconcat: false
+    gosmopolitan:
+      allow-time-local: true
+    mnd:
+      ignored-numbers:
+        - '0o600'
+        - '0o640'
+        - '0o644'
+        - '0o666'
+        - '0o700'
+        - '0o740'
+        - '0o744'
+        - '0o750'
+        - '0o755'
+        - '2'
+run:
+  relative-path-mode: 'gomod'

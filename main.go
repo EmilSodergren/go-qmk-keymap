@@ -442,8 +442,6 @@ func getConfigData(firstLine string, args Args) (*keyboard_t, error) {
 	return kb, nil
 }
 
-var test_re = regexp.MustCompile(`\s*\[(?<layer_id>[[:word:]]+)\] = LAYOUT\s*\(`)
-
 func run(args Args) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	lines := make([]string, 0, 4096)
@@ -483,10 +481,10 @@ func run(args Args) error {
 	)
 
 	for _, line := range lines {
-		// here we check if the line is a '//' comment
+		// here we check if the line is part of a c-style comment
 		if is_comment_line(line) {
 			// If it is NOT a "special" VizLine comment, we keep it.
-			// The VizLines will be added later, so skip them to avoid duplicates
+			// The VizLines will be generated added later, so skip them to avoid duplicates
 			if !strings.HasPrefix(strings.TrimSpace(line), kb.VizLine) {
 				output = append(output, line)
 			}
@@ -566,7 +564,7 @@ func run(args Args) error {
 	}
 
 	for _, l := range keymapLayers {
-		l.Format() // <-- print this to use the new formatter
+		fmt.Println(l.Format()) // <-- print this to use the new formatter
 	}
 
 	for _, l := range output {
