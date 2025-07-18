@@ -4,6 +4,7 @@ tags
 *.exe
 *.exe~
 
+go.sum
 .git/
 .vscode/
 .build/

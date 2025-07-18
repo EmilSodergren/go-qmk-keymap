@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/jurgen-kluft/go-qmk-keymap/svg"
+	"github.com/EmilSodergren/go-qmk-keymap/svg"
 )
 
 const (

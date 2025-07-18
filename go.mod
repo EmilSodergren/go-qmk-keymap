@@ -1,3 +1,3 @@
-module github.com/jurgen-kluft/go-qmk-keymap
+module github.com/EmilSodergren/go-qmk-keymap
 
 go 1.24
