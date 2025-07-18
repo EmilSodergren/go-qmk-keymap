@@ -515,7 +515,7 @@ func run(args Args) error {
 			}
 
 			output = append(output, line)
-		// Parsing a KeyMap definiton
+		// Parsing a KeyMap definition
 		case STATE_KEYMAP:
 			if strings.TrimSpace(line) == keymap_end1 || strings.TrimSpace(line) == keymap_end2 {
 				// do we have a parsed keymap, if so append the formatted lines to output
@@ -564,7 +564,7 @@ func run(args Args) error {
 	}
 
 	for _, l := range keymapLayers {
-		fmt.Println(l.Format()) // <-- print this to use the new formatter
+		l.Format() // <-- print this to use the new formatter
 	}
 
 	for _, l := range output {
